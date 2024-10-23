@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.uestc.backupsystem.mapper.BackupRecordMapper">
+
+    <select id="getBackupRecordById" parameterType="long" resultType="com.uestc.backupsystem.entity.BackupRecordEntity">
+        SELECT *
+        FROM backup_records
+        WHERE id = #{id}
+    </select>
+
+    <select id="getAllBackupRecord" resultType="com.uestc.backupsystem.entity.BackupRecordEntity">
+        SELECT *
+        FROM backup_records
+    </select>
+
+    <insert id="insertBackupRecord" parameterType="com.uestc.backupsystem.entity.BackupRecordEntity">
+        INSERT INTO backup_records (source_path, destination_path, backup_time, status)
+        VALUES (#{sourcePath}, #{destinationPath}, #{backupTime}, #{status})
+    </insert>
+</mapper>

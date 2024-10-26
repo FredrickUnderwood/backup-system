@@ -2,6 +2,7 @@ package com.uestc.backupsystem.service.impl;
 
 import com.uestc.backupsystem.entity.BackupRecordEntity;
 import com.uestc.backupsystem.entity.RestoreRecordEntity;
+import com.uestc.backupsystem.jni.SymbolicLinkManagerWindows;
 import com.uestc.backupsystem.mapper.BackupRecordMapper;
 import com.uestc.backupsystem.mapper.RestoreRecordMapper;
 import com.uestc.backupsystem.service.BackupBasicService;
@@ -26,13 +27,21 @@ public class BackupBasicServiceImpl implements BackupBasicService {
     @Autowired
     private RestoreRecordMapper restoreRecordMapper;
 
+    @Autowired
+    private SymbolicLinkManagerWindows symbolicLinkManagerWindows;
+
     private static final String SUCCESS_STATUS = "SUCCESS";
+
+    private static final String FAILURE_STATUS = "FAILURE";
 
     private static final Integer BUFFER_SIZE = 8192;
 
 
     @Override
     public void backup(String sourcePath, String destinationPath) throws IOException {
+
+        String backupStatus = SUCCESS_STATUS;
+
         File source = new File(sourcePath);
         File destination = new File(destinationPath);
 
@@ -40,8 +49,11 @@ public class BackupBasicServiceImpl implements BackupBasicService {
             throw new FileNotFoundException("Source directory not found: " + source.getAbsolutePath());
         }
 
-
-        if (source.isFile()) {
+        if(symbolicLinkManagerWindows.isSymbolicLink(sourcePath)) {
+            File destinationLink = new File(destination, source.getName());
+            destinationPath = destinationLink.getAbsolutePath();
+            backupStatus = createNewSymbolicLink(source, destinationLink);
+        } else if (source.isFile()) {
             // 处理文件
             File destinationFile = new File(destinationPath, source.getName());
             destinationPath = destinationFile.getAbsolutePath();
@@ -58,21 +70,25 @@ public class BackupBasicServiceImpl implements BackupBasicService {
         backupRecord.setSourcePath(sourcePath);
         backupRecord.setDestinationPath(destinationPath);
         backupRecord.setBackupTime(LocalDateTime.now());
-        backupRecord.setStatus(SUCCESS_STATUS);
+        backupRecord.setStatus(backupStatus);
         backupRecordMapper.insertBackupRecord(backupRecord);
-        log.info("Backup execution info: " + backupRecord.toString());
+        log.info("Backup execution info: {}", backupRecord.toString());
     }
 
     @Override
     public void restore(long backupRecordId) throws IOException {
+
+        String restoreStatus = SUCCESS_STATUS;
+
         BackupRecordEntity backupRecord = backupRecordMapper.getBackupRecordById(backupRecordId);
         String sourcePath = backupRecord.getSourcePath();
         String destinationPath = backupRecord.getDestinationPath();
 
         File source = new File(sourcePath);
         File destination = new File(destinationPath);
-
-        if (destination.isFile()) {
+        if (symbolicLinkManagerWindows.isSymbolicLink(sourcePath)) {
+            restoreStatus = createNewSymbolicLink(destination, source);
+        } else if (destination.isFile()) {
             executeFileTransfer(destination, source);
         } else if (destination.isDirectory()) {
             executeDirTransfer(destination, source);
@@ -84,14 +100,19 @@ public class BackupBasicServiceImpl implements BackupBasicService {
         restoreRecord.setSourcePath(sourcePath);
         restoreRecord.setDestinationPath(destinationPath);
         restoreRecord.setRestoreTime(LocalDateTime.now());
-        restoreRecord.setStatus(SUCCESS_STATUS);
+        restoreRecord.setStatus(restoreStatus);
         restoreRecordMapper.insertRestoreRecord(restoreRecord);
-        log.info("Backup execution info: " + restoreRecord.toString());
+        log.info("Restore execution info: {}", restoreRecord.toString());
     }
 
     @Override
     public List<BackupRecordEntity> getAllBackupRecord() {
         return backupRecordMapper.getAllBackupRecord();
+    }
+
+    @Override
+    public List<BackupRecordEntity> getAllSuccessBackupRecord() {
+        return backupRecordMapper.getAllSuccessBackupRecord();
     }
 
     private void executeFileTransfer(File sourceFile, File destinationFile) throws IOException {
@@ -115,6 +136,16 @@ public class BackupBasicServiceImpl implements BackupBasicService {
 
     }
 
+    private String createNewSymbolicLink(File sourceLink, File destinationLink) {
+        String sourcePath = sourceLink.getAbsolutePath();
+        String destinationPath = destinationLink.getAbsolutePath();
+        String symbolicLinkTarget = symbolicLinkManagerWindows.getSymbolicLinkTarget(sourcePath);
+        if (symbolicLinkManagerWindows.createNewSymbolicLink(symbolicLinkTarget, destinationPath)) {
+            return SUCCESS_STATUS;
+        }
+        return FAILURE_STATUS;
+    }
+
     private void executeDirTransfer(File sourceDir, File destinationDir) throws IOException {
         Stack<File[]> stack = new Stack<>();
         stack.push(new File[]{sourceDir, destinationDir});
@@ -129,7 +160,9 @@ public class BackupBasicServiceImpl implements BackupBasicService {
             if (files != null) {
                 for (File file: files) {
                     File destinationFile = new File(currentDestinationDir, file.getName());
-                    if (file.isDirectory()) {
+                    if (symbolicLinkManagerWindows.isSymbolicLink(file.getAbsolutePath())){
+                        createNewSymbolicLink(file, destinationFile);
+                    } else if (file.isDirectory()) {
                         stack.push(new File[]{file, destinationFile});
                     } else if (file.isFile()) {
                         executeFileTransfer(file, destinationFile);

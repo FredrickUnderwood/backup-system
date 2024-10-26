@@ -11,4 +11,6 @@ public interface BackupBasicService {
     public void restore(long backupRecordId) throws IOException;
 
     public List<BackupRecordEntity> getAllBackupRecord();
+
+    public List<BackupRecordEntity> getAllSuccessBackupRecord();
 }

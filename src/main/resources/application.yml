@@ -9,4 +9,3 @@ mybatis:
   type-aliases-package: com.uestc.backupsystem.entity
   configuration:
     map-underscore-to-camel-case: true
-

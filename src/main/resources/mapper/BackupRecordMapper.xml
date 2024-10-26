@@ -18,4 +18,10 @@
         INSERT INTO backup_records (source_path, destination_path, backup_time, status)
         VALUES (#{sourcePath}, #{destinationPath}, #{backupTime}, #{status})
     </insert>
+
+    <select id="getAllSuccessBackupRecord" resultType="com.uestc.backupsystem.entity.BackupRecordEntity">
+        SELECT *
+        FROM backup_records
+        WHERE status = "SUCCESS"
+    </select>
 </mapper>

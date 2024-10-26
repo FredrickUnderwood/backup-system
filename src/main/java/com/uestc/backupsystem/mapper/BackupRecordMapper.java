@@ -12,5 +12,7 @@ public interface BackupRecordMapper {
 
     List<BackupRecordEntity> getAllBackupRecord();
 
+    List<BackupRecordEntity> getAllSuccessBackupRecord();
+
     void insertBackupRecord(BackupRecordEntity backupRecordEntity);
 }

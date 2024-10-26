@@ -57,12 +57,12 @@ public class BackupBasicServiceImpl implements BackupBasicService {
             // 处理文件
             File destinationFile = new File(destinationPath, source.getName());
             destinationPath = destinationFile.getAbsolutePath();
-            executeFileTransfer(source, destinationFile);
+            backupStatus = executeFileTransfer(source, destinationFile);
         } else if (source.isDirectory()) {
             // 处理目录
             File destinationDir = new File(destination, source.getName());
             destinationPath = destinationDir.getAbsolutePath();
-            executeDirTransfer(source, destinationDir);
+            backupStatus = executeDirTransfer(source, destinationDir);
         } else {
             throw new IOException("Source directory wrong: " + source.getAbsolutePath());
         }
@@ -89,9 +89,9 @@ public class BackupBasicServiceImpl implements BackupBasicService {
         if (symbolicLinkManagerWindows.isSymbolicLink(sourcePath)) {
             restoreStatus = createNewSymbolicLink(destination, source);
         } else if (destination.isFile()) {
-            executeFileTransfer(destination, source);
+            restoreStatus = executeFileTransfer(destination, source);
         } else if (destination.isDirectory()) {
-            executeDirTransfer(destination, source);
+            restoreStatus = executeDirTransfer(destination, source);
         } else {
             throw new IOException("Source directory wrong: " + source.getAbsolutePath());
         }
@@ -115,7 +115,7 @@ public class BackupBasicServiceImpl implements BackupBasicService {
         return backupRecordMapper.getAllSuccessBackupRecord();
     }
 
-    private void executeFileTransfer(File sourceFile, File destinationFile) throws IOException {
+    private String executeFileTransfer(File sourceFile, File destinationFile) throws IOException {
         if (!sourceFile.exists()) {
             throw new FileNotFoundException("Source file not found: " + sourceFile.getAbsolutePath());
         }
@@ -133,10 +133,14 @@ public class BackupBasicServiceImpl implements BackupBasicService {
                 fos.write(buffer, 0, byteRead);
             }
         }
+        return SUCCESS_STATUS;
 
     }
 
     private String createNewSymbolicLink(File sourceLink, File destinationLink) {
+        if (!symbolicLinkManagerWindows.isSymbolicLink(destinationLink.getAbsolutePath())) {
+            return FAILURE_STATUS;
+        }
         String sourcePath = sourceLink.getAbsolutePath();
         String destinationPath = destinationLink.getAbsolutePath();
         String symbolicLinkTarget = symbolicLinkManagerWindows.getSymbolicLinkTarget(sourcePath);
@@ -146,7 +150,8 @@ public class BackupBasicServiceImpl implements BackupBasicService {
         return FAILURE_STATUS;
     }
 
-    private void executeDirTransfer(File sourceDir, File destinationDir) throws IOException {
+    private String executeDirTransfer(File sourceDir, File destinationDir) throws IOException {
+        String backupStatus = SUCCESS_STATUS;
         Stack<File[]> stack = new Stack<>();
         stack.push(new File[]{sourceDir, destinationDir});
         while (!stack.empty()) {
@@ -161,7 +166,7 @@ public class BackupBasicServiceImpl implements BackupBasicService {
                 for (File file: files) {
                     File destinationFile = new File(currentDestinationDir, file.getName());
                     if (symbolicLinkManagerWindows.isSymbolicLink(file.getAbsolutePath())){
-                        createNewSymbolicLink(file, destinationFile);
+                        backupStatus = createNewSymbolicLink(file, destinationFile);
                     } else if (file.isDirectory()) {
                         stack.push(new File[]{file, destinationFile});
                     } else if (file.isFile()) {
@@ -170,5 +175,6 @@ public class BackupBasicServiceImpl implements BackupBasicService {
                 }
             }
         }
+        return backupStatus;
     }
 }

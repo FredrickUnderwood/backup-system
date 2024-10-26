@@ -23,7 +23,7 @@ class BackupBasicServiceTest {
 
     @Test
     void backup() throws IOException {
-        backupBasicService.backup("E:\\LinkSource", "D:\\backup");
+        backupBasicService.backup("E:\\linkSource", "D:\\backup");
     }
 
     @Test

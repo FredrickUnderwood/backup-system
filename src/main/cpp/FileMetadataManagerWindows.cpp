@@ -26,7 +26,7 @@ FILETIME StringToFileTime(const std::string& str) {
 class FileMetadataManagerWindows {
     public:
     static std::string getFileMetadata(const std::string& path) {
-        json resultlJson;
+        json resultJson;
 
         // 文件 Mode
         DWORD fileAttributes = GetFileAttributesA(path.c_str());
@@ -40,12 +40,12 @@ class FileMetadataManagerWindows {
         bool isHidden = (fileAttributes & FILE_ATTRIBUTE_HIDDEN) != 0;
         bool isSystem = (fileAttributes & FILE_ATTRIBUTE_SYSTEM) != 0;
         bool isReparsePoint = (fileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0;
-        resultlJson["isDirectory"] = isDirectory;
-        resultlJson["isArchive"] = isArchive;
-        resultlJson["isReadOnly"] = isReadOnly;
-        resultlJson["isHidden"] = isHidden;
-        resultlJson["isSystem"] = isSystem;
-        resultlJson["isReparsePoint"] = isReparsePoint;
+        resultJson["isDirectory"] = isDirectory;
+        resultJson["isArchive"] = isArchive;
+        resultJson["isReadOnly"] = isReadOnly;
+        resultJson["isHidden"] = isHidden;
+        resultJson["isSystem"] = isSystem;
+        resultJson["isReparsePoint"] = isReparsePoint;
 
         // 句柄
         HANDLE hFile = CreateFileA(
@@ -60,7 +60,6 @@ class FileMetadataManagerWindows {
 
         if (hFile == INVALID_HANDLE_VALUE) {
             std::cerr << "Opening file wrong: " << GetLastError() << std::endl;
-            CloseHandle(hFile);
             return "";
         }
 
@@ -76,9 +75,9 @@ class FileMetadataManagerWindows {
             CloseHandle(hFile);
             return "";
         }
-        resultlJson["creationTime"] = creationTimeS;
-        resultlJson["lastAccessTime"] = lastAccessTimeS;
-        resultlJson["lastWriteTime"] = lastWriteTimeS;
+        resultJson["creationTime"] = creationTimeS;
+        resultJson["lastAccessTime"] = lastAccessTimeS;
+        resultJson["lastWriteTime"] = lastWriteTimeS;
         
 
         // 文件 所有者
@@ -117,10 +116,10 @@ class FileMetadataManagerWindows {
 
         LocalFree(pSD);
 
-        resultlJson["owner"] = owner;
+        resultJson["owner"] = owner;
 
         CloseHandle(hFile);
-        return resultlJson.dump();
+        return resultJson.dump();
     }
 
     static int checkFileMetadata(const std::string sourceFileMetadataJsonS, const std::string destinationFileMetadataJsonS) {
@@ -150,36 +149,13 @@ class FileMetadataManagerWindows {
         std::string sourceFileMetadataJsonS = getFileMetadata(sourcePath);
         std::string destinationFileMetadataJsonS = getFileMetadata(destinationPath);
         
-        int checkCode = checkFileMetadata(sourceFileMetadataJsonS, destinationFileMetadataJsonS);
+        int metadataCheckCode = checkFileMetadata(sourceFileMetadataJsonS, destinationFileMetadataJsonS);
         
         json fileMetadataJson = json::parse(sourceFileMetadataJsonS.c_str());
-
-        if (checkCode | 1){
-            // 文件 Mode
-            DWORD fileAttributes = GetFileAttributesA(destinationPath.c_str());
-            if (fileAttributes == INVALID_FILE_ATTRIBUTES) {
-                std::cerr << "Getting attributes wrong from: " << destinationPath << ". Wrong: " << GetLastError() << std::endl;
-                return false;
-            }
-            if (fileMetadataJson["isReadOnly"]) {
-                fileAttributes |= FILE_ATTRIBUTE_READONLY;
-            } else {
-                fileAttributes &= ~FILE_ATTRIBUTE_READONLY;
-            }
-            if (fileMetadataJson["isHidden"]) {
-                fileAttributes |= FILE_ATTRIBUTE_HIDDEN;
-            } else {
-                fileAttributes &= ~FILE_ATTRIBUTE_HIDDEN;
-            }
-            if (!SetFileAttributesA(destinationPath.c_str(), fileAttributes)) {
-                std::cerr << "Setting file attributes wrong for: " << destinationPath << ". Wrong: " << GetLastError() << std::endl;
-                return false;
-            }
-        }
+        json destinationFileMetadataJson = json::parse(destinationFileMetadataJsonS.c_str());
         
         
-        if (checkCode | 2) {
-            // 文件 创建时间，最后访问时间，最后修改时间
+        if (metadataCheckCode & 2) {
             HANDLE hFileWriteTime = CreateFileA(
                 destinationPath.c_str(),
                 GENERIC_WRITE,
@@ -191,7 +167,6 @@ class FileMetadataManagerWindows {
             );
             if (hFileWriteTime == INVALID_HANDLE_VALUE) {
                 std::cerr << "Opening file wrong: " << GetLastError() << std::endl;
-                CloseHandle(hFileWriteTime);
                 return false;
             }
             FILETIME creationTime, lastAccessTime, lastWriteTime;
@@ -207,7 +182,7 @@ class FileMetadataManagerWindows {
             CloseHandle(hFileWriteTime);
         }
         
-        if (checkCode | 4) {
+        if (metadataCheckCode & 4) {
             // 文件 所有者
             PSID pSidOwner = NULL;
             SID_NAME_USE sidType;
@@ -235,7 +210,6 @@ class FileMetadataManagerWindows {
             );
             if (hFileWriteOwner == INVALID_HANDLE_VALUE) {
                 std::cerr << "Opening file wrong: " << GetLastError() << std::endl;
-                CloseHandle(hFileWriteOwner);
                 return false;
             }
             if (SetSecurityInfo(hFileWriteOwner, SE_FILE_OBJECT, OWNER_SECURITY_INFORMATION, pSidOwner, NULL, NULL, NULL)) {
@@ -247,6 +221,30 @@ class FileMetadataManagerWindows {
             free(pSidOwner);
             CloseHandle(hFileWriteOwner);
         }
+
+        if (metadataCheckCode & 1){
+            // 文件 Mode
+            DWORD fileAttributes = GetFileAttributesA(destinationPath.c_str());
+            if (fileAttributes == INVALID_FILE_ATTRIBUTES) {
+                std::cerr << "Getting attributes wrong from: " << destinationPath << ". Wrong: " << GetLastError() << std::endl;
+                return false;
+            }
+            if (fileMetadataJson["isReadOnly"]) {
+                fileAttributes |= FILE_ATTRIBUTE_READONLY;
+            } else {
+                fileAttributes &= ~FILE_ATTRIBUTE_READONLY;
+            }
+            if (fileMetadataJson["isHidden"]) {
+                fileAttributes |= FILE_ATTRIBUTE_HIDDEN;
+            } else {
+                fileAttributes &= ~FILE_ATTRIBUTE_HIDDEN;
+            }
+            if (!SetFileAttributesA(destinationPath.c_str(), fileAttributes)) {
+                std::cerr << "Setting file attributes wrong for: " << destinationPath << ". Wrong: " << GetLastError() << std::endl;
+                return false;
+            }
+        }
+
         return true;
     }
 };

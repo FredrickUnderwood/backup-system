@@ -21,8 +21,6 @@ public class SymbolicLinkManagerWindows {
     public native String getSymbolicLinkTarget(String path);
 
     public boolean createNewSymbolicLink(String target, String destinationPath) {
-        File destination = new File(destinationPath);
-        destination.delete();
         List<String> commands = new ArrayList<>();
         try {
             commands.add("cmd.exe");

@@ -2,17 +2,25 @@ package com.uestc.backupsystem.service.impl;
 
 import com.alibaba.fastjson.JSON;
 import com.uestc.backupsystem.dao.CaseRecordDAO;
+import com.uestc.backupsystem.dao.ExecutionRecordDAO;
+import com.uestc.backupsystem.dao.FailureFileRecordDAO;
 import com.uestc.backupsystem.dto.*;
 import com.uestc.backupsystem.mapper.CaseRecordMapper;
+import com.uestc.backupsystem.mapper.ExecutionRecordMapper;
+import com.uestc.backupsystem.mapper.FailureFileRecordMapper;
 import com.uestc.backupsystem.service.BackupService;
 import com.uestc.backupsystem.service.CaseService;
 import com.uestc.backupsystem.service.RestoreService;
+import com.uestc.backupsystem.vo.CaseRecordVO;
+import com.uestc.backupsystem.vo.ExecutionRecordVO;
+import com.uestc.backupsystem.vo.FailureFileRecordVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -23,6 +31,12 @@ public class CaseServiceImpl implements CaseService {
 
     @Autowired
     private CaseRecordMapper caseRecordMapper;
+
+    @Autowired
+    private ExecutionRecordMapper executionRecordMapper;
+
+    @Autowired
+    private FailureFileRecordMapper failureFileRecordMapper;
 
     @Autowired
     private BackupService backupService;
@@ -99,6 +113,52 @@ public class CaseServiceImpl implements CaseService {
         }
         caseRecordMapper.updateCaseRecordUpdatedTime(caseExecutionParam.getCaseId(), LocalDateTime.now());
         return JSON.toJSONString(executionResult);
+    }
+
+    @Override
+    public String getAllHistoryRecords() {
+        List<CaseRecordDAO> allCaseRecordList = caseRecordMapper.getAllCaseRecords();
+        List<CaseRecordVO> caseRecordVOList = new ArrayList<>();
+        for(CaseRecordDAO caseRecord: allCaseRecordList) {
+            CaseRecordVO caseRecordVO = new CaseRecordVO();
+            caseRecordVO.setCaseRecord(caseRecord);
+
+            List<ExecutionRecordVO> executionRecordVOList = new ArrayList<>();
+            List<ExecutionRecordDAO> allExecutionRecordList = executionRecordMapper.getAllExecutionRecordsByCaseId(caseRecord.getId());
+            for(ExecutionRecordDAO executionRecord: allExecutionRecordList) {
+                ExecutionRecordVO executionRecordVO = new ExecutionRecordVO();
+                executionRecordVO.setExecutionRecord(executionRecord);
+
+                List<FailureFileRecordVO> failureFileRecordVOList = new ArrayList<>();
+                List<FailureFileRecordDAO> allFailureFileRecordList = failureFileRecordMapper.getAllFailureFileRecordsByExecutionId(executionRecord.getId());
+                for(FailureFileRecordDAO failureFileRecord: allFailureFileRecordList) {
+                    FailureFileRecordVO failureFileRecordVO = new FailureFileRecordVO();
+
+                    failureFileRecordVO.setFailureFileRecord(failureFileRecord);
+                    failureFileRecordVOList.add(failureFileRecordVO);
+                }
+                executionRecordVO.setFailureFileRecordList(failureFileRecordVOList);
+                executionRecordVOList.add(executionRecordVO);
+            }
+            caseRecordVO.setExecutionRecordList(executionRecordVOList);
+            caseRecordVOList.add(caseRecordVO);
+        }
+        return JSON.toJSONString(caseRecordVOList);
+    }
+
+    @Override
+    public String deleteCase(DeleteCaseParamDTO deleteCaseParam) {
+        long caseId = deleteCaseParam.getCaseId();
+        DeleteCaseResultDTO deleteCaseResult = new DeleteCaseResultDTO();
+        try {
+            caseRecordMapper.deleteCaseById(caseId);
+            deleteCaseResult.setDeleteCaseSuccess(true);
+            return JSON.toJSONString(deleteCaseResult);
+        } catch (Exception e) {
+            log.error("{}{}.", LOG_PREFIX, "Delete case failed", e);
+            deleteCaseResult.setDeleteCaseSuccess(false);
+            return JSON.toJSONString(deleteCaseResult);
+        }
     }
 
     private String createDestinationPath(CaseRecordDAO caseRecord) {

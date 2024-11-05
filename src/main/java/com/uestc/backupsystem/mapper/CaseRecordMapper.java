@@ -14,4 +14,6 @@ public interface CaseRecordMapper {
     List<CaseRecordDAO> getAllCaseRecordsBySourcePathAndBackupPath(@Param("sourcePath") String sourcePath, @Param("backupPath") String backupPath);
     void updateCaseRecordUpdatedTime(@Param("id") long id, @Param("updatedTime") LocalDateTime updatedTime);
     void updateCaseRecordBackupPath(@Param("id") long id, @Param("backupPath") String backupPath);
+    List<CaseRecordDAO> getAllCaseRecords();
+    void deleteCaseById(long id);
 }

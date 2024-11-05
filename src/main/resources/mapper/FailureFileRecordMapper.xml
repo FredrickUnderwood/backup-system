@@ -7,4 +7,8 @@
         INSERT INTO failure_file_record (id, execution_id, failure_type, file, file_type)
         VALUES (#{id}, #{executionId}, #{failureType}, #{file}, #{fileType})
     </insert>
+    <select id="getAllFailureFileRecordsByExecutionId" parameterType="long" resultType="com.uestc.backupsystem.dao.FailureFileRecordDAO">
+        SELECT * FROM failure_file_record
+        WHERE execution_id = #{executionId}
+    </select>
 </mapper>

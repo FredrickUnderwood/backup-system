@@ -5,36 +5,34 @@
 
 <mapper namespace="com.uestc.backupsystem.mapper.CaseRecordMapper">
 
-    <!-- Select CaseRecord by ID -->
     <select id="getCaseRecordById" parameterType="long" resultType="com.uestc.backupsystem.dao.CaseRecordDAO">
         SELECT * FROM case_record
         WHERE id = #{id}
     </select>
-
-    <!-- Insert a new CaseRecord -->
     <insert id="insertCaseRecord" parameterType="com.uestc.backupsystem.dao.CaseRecordDAO">
         INSERT INTO case_record (source_path, backup_path, created_time, updated_time)
         VALUES (#{sourcePath}, #{backupPath}, #{createdTime}, #{updatedTime})
     </insert>
-
-    <!-- Select all CaseRecords by sourcePath and backupPath -->
     <select id="getAllCaseRecordsBySourcePathAndBackupPath" parameterType="map" resultType="com.uestc.backupsystem.dao.CaseRecordDAO">
         SELECT * FROM case_record
         WHERE source_path = #{sourcePath} AND backup_path = #{backupPath}
     </select>
-
-    <!-- Update the updatedTime for a CaseRecord by ID -->
     <update id="updateCaseRecordUpdatedTime" parameterType="map">
         UPDATE case_record
         SET updated_time = #{updatedTime}
         WHERE id = #{id}
     </update>
-
-    <!-- Update the backupPath for a CaseRecord by ID -->
     <update id="updateCaseRecordBackupPath" parameterType="map">
         UPDATE case_record
         SET backup_path = #{backupPath}
         WHERE id = #{id}
     </update>
+    <select id="getAllCaseRecords" resultType="com.uestc.backupsystem.dao.CaseRecordDAO">
+        SELECT * FROM case_record
+    </select>
+    <select id="deleteCaseById" parameterType="long">
+        DELETE FROM case_record
+        WHERE id = #{id}
+    </select>
 
 </mapper>

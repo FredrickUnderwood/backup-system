@@ -1,8 +1,6 @@
 package com.uestc.backupsystem.controller;
 
-import com.uestc.backupsystem.dto.CaseExecutionParamDTO;
-import com.uestc.backupsystem.dto.CreateNewCaseParamDTO;
-import com.uestc.backupsystem.dto.UpdateCaseBackupPathParamDTO;
+import com.uestc.backupsystem.dto.*;
 import com.uestc.backupsystem.service.CaseService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -41,6 +39,26 @@ public class CaseController {
             return ResponseEntity.ok(resultMap);
         } else {
             return ResponseEntity.badRequest().body("Update case back up path failed.");
+        }
+    }
+
+    @GetMapping("/")
+    public ResponseEntity<String> getAllHistoryRecords() {
+        String resultMap = caseService.getAllHistoryRecords();
+        if(resultMap != null) {
+            return ResponseEntity.ok(resultMap);
+        } else {
+            return ResponseEntity.badRequest().body("Get all history records failed.");
+        }
+    }
+
+    @PostMapping("/delete-case")
+    public ResponseEntity<String> deleteCaseById(@RequestBody DeleteCaseParamDTO deleteCaseParamDTO) {
+        String resultMap = caseService.deleteCase(deleteCaseParamDTO);
+        if(resultMap != null) {
+            return ResponseEntity.ok(resultMap);
+        } else {
+            return ResponseEntity.badRequest().body("Delete case failed.");
         }
     }
 

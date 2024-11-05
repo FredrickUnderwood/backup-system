@@ -42,4 +42,9 @@ class CaseServiceImplTest {
         caseExecutionParam.setExecutionType(ExecutionType.BACKUP);
         caseService.createNewExecution(caseExecutionParam);
     }
+
+    @Test
+    void getAllHistoryRecords() {
+        System.out.println(caseService.getAllHistoryRecords());
+    }
 }

@@ -70,13 +70,12 @@ public class FileSystemServiceImpl implements FileSystemService {
     @Override
     public LinkedHashMap<File, FileType> getDiffFileList(File sourceDir, File destinationDir) {
         // 传入内容不为目录，直接处理
+        LinkedHashMap<File, FileType> diffFileList = new LinkedHashMap<>();
         if (!sourceDir.isDirectory()) {
-            return null;
+            return diffFileList;
         }
         LinkedHashMap<File, FileType> sourceDirFileList = getFileList(sourceDir);
         LinkedHashMap<File, FileType> destinationDirFileList = getFileList(destinationDir);
-
-        LinkedHashMap<File, FileType> diffFileList = new LinkedHashMap<>();
         for (File file: destinationDirFileList.keySet()) {
             String relativePath = destinationDir.toPath().relativize(file.toPath()).toString();
             File sourceFileEquivalent = new File(sourceDir, relativePath);

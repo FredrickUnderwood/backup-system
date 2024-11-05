@@ -107,10 +107,16 @@ public class SyncServiceImpl implements SyncService {
     public SolveDiffResultDTO solveDiff(String sourcePath, String destinationPath) {
         File sourceDir = new File(sourcePath);
         File destinationDir = new File(destinationPath);
-        LinkedHashMap<File, FileType> diffFileList = fileSystemService.getDiffFileList(sourceDir, destinationDir);
-        ListIterator<Map.Entry<File, FileType>> listIterator = new ArrayList<Map.Entry<File, FileType>>(diffFileList.entrySet()).listIterator(diffFileList.size());
         SolveDiffResultDTO solveDiffResult = new SolveDiffResultDTO();
         LinkedHashMap<File, FileType> solveDiffFailureFileList = new LinkedHashMap<>();
+        LinkedHashMap<File, FileType> diffFileList = fileSystemService.getDiffFileList(sourceDir, destinationDir);
+        if (diffFileList.isEmpty()) {
+            solveDiffResult.setSolveDiffSuccess(true);
+            solveDiffResult.setSolveDiffFailureFileList(solveDiffFailureFileList);
+            return solveDiffResult;
+        }
+        ListIterator<Map.Entry<File, FileType>> listIterator = new ArrayList<>(diffFileList.entrySet()).listIterator(diffFileList.size());
+
         while(listIterator.hasPrevious()) {
             Map.Entry<File, FileType> entry = listIterator.previous();
             if (!syncOperationService.deleteFile(entry.getKey())) {

@@ -13,7 +13,9 @@ public interface CaseService {
 
     public String createNewExecution(CaseExecutionParamDTO caseExecutionParam);
 
-    public String getAllHistoryRecords();
+    public String getAllCaseRecords();
+
+    public String getAllExecutionRecordsByCaseId(long caseId);
 
     public String deleteCase(DeleteCaseParamDTO deleteCaseParam);
 

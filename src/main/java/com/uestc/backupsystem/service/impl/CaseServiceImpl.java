@@ -11,9 +11,6 @@ import com.uestc.backupsystem.mapper.FailureFileRecordMapper;
 import com.uestc.backupsystem.service.BackupService;
 import com.uestc.backupsystem.service.CaseService;
 import com.uestc.backupsystem.service.RestoreService;
-import com.uestc.backupsystem.vo.CaseRecordVO;
-import com.uestc.backupsystem.vo.ExecutionRecordVO;
-import com.uestc.backupsystem.vo.FailureFileRecordVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -116,34 +113,15 @@ public class CaseServiceImpl implements CaseService {
     }
 
     @Override
-    public String getAllHistoryRecords() {
-        List<CaseRecordDAO> allCaseRecordList = caseRecordMapper.getAllCaseRecords();
-        List<CaseRecordVO> caseRecordVOList = new ArrayList<>();
-        for(CaseRecordDAO caseRecord: allCaseRecordList) {
-            CaseRecordVO caseRecordVO = new CaseRecordVO();
-            caseRecordVO.setCaseRecord(caseRecord);
+    public String getAllCaseRecords() {
+        List<CaseRecordDAO> allCaseRecords = caseRecordMapper.getAllCaseRecords();
+        return JSON.toJSONString(allCaseRecords);
+    }
 
-            List<ExecutionRecordVO> executionRecordVOList = new ArrayList<>();
-            List<ExecutionRecordDAO> allExecutionRecordList = executionRecordMapper.getAllExecutionRecordsByCaseId(caseRecord.getId());
-            for(ExecutionRecordDAO executionRecord: allExecutionRecordList) {
-                ExecutionRecordVO executionRecordVO = new ExecutionRecordVO();
-                executionRecordVO.setExecutionRecord(executionRecord);
-
-                List<FailureFileRecordVO> failureFileRecordVOList = new ArrayList<>();
-                List<FailureFileRecordDAO> allFailureFileRecordList = failureFileRecordMapper.getAllFailureFileRecordsByExecutionId(executionRecord.getId());
-                for(FailureFileRecordDAO failureFileRecord: allFailureFileRecordList) {
-                    FailureFileRecordVO failureFileRecordVO = new FailureFileRecordVO();
-
-                    failureFileRecordVO.setFailureFileRecord(failureFileRecord);
-                    failureFileRecordVOList.add(failureFileRecordVO);
-                }
-                executionRecordVO.setFailureFileRecordList(failureFileRecordVOList);
-                executionRecordVOList.add(executionRecordVO);
-            }
-            caseRecordVO.setExecutionRecordList(executionRecordVOList);
-            caseRecordVOList.add(caseRecordVO);
-        }
-        return JSON.toJSONString(caseRecordVOList);
+    @Override
+    public String getAllExecutionRecordsByCaseId(long caseId) {
+        List<ExecutionRecordDAO> allExecutionRecordsByCaseId = executionRecordMapper.getAllExecutionRecordsByCaseId(caseId);
+        return JSON.toJSONString(allExecutionRecordsByCaseId);
     }
 
     @Override

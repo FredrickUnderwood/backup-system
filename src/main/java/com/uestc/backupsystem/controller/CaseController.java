@@ -43,12 +43,22 @@ public class CaseController {
     }
 
     @GetMapping("/")
-    public ResponseEntity<String> getAllHistoryRecords() {
-        String resultMap = caseService.getAllHistoryRecords();
+    public ResponseEntity<String> getAllCaseRecords() {
+        String resultMap = caseService.getAllCaseRecords();
         if(resultMap != null) {
             return ResponseEntity.ok(resultMap);
         } else {
-            return ResponseEntity.badRequest().body("Get all history records failed.");
+            return ResponseEntity.badRequest().body("Get all case records failed.");
+        }
+    }
+
+    @GetMapping("/{case_id}")
+    public ResponseEntity<String> getAllExecutionRecordsByCaseId(@PathVariable("case_id") long caseId) {
+        String resultMap = caseService.getAllExecutionRecordsByCaseId(caseId);
+        if(resultMap != null) {
+            return ResponseEntity.ok(resultMap);
+        } else {
+            return ResponseEntity.badRequest().body("Get all execution records by caseId failed.");
         }
     }
 

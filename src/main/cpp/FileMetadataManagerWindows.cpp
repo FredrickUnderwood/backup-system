@@ -3,6 +3,7 @@
 #include <aclapi.h>
 #include <jni.h>
 #include <nlohmann/json.hpp>
+#define LOG_PREFIX "[FileMetadataManagerWindows]"
 using json = nlohmann::json;
 
 std::string FileTimeToString(const FILETIME& ft) {
@@ -31,7 +32,7 @@ class FileMetadataManagerWindows {
         // 文件 Mode
         DWORD fileAttributes = GetFileAttributesA(path.c_str());
         if (fileAttributes == INVALID_FILE_ATTRIBUTES) {
-            std::cerr << "Getting file attributes wrong from: " << path << ". Wrong: " << GetLastError() << std::endl;
+            std::cerr << LOG_PREFIX << "getFileMetadata: Getting file attributes wrong from: " << path << ". Wrong: " << GetLastError() << std::endl;
             return "";
         }
         bool isDirectory = (fileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
@@ -59,7 +60,7 @@ class FileMetadataManagerWindows {
         );
 
         if (hFile == INVALID_HANDLE_VALUE) {
-            std::cerr << "Opening file wrong: " << GetLastError() << std::endl;
+            std::cerr << LOG_PREFIX << "getFileMetadata: Opening file wrong: " << GetLastError() << std::endl;
             return "";
         }
 
@@ -71,7 +72,7 @@ class FileMetadataManagerWindows {
             lastAccessTimeS = FileTimeToString(lastAccessTime);
             lastWriteTimeS = FileTimeToString(lastWriteTime);
         } else {
-            std::cerr << "Getting file time wrong from: " << path << ". Wrong: " << GetLastError() << std::endl;
+            std::cerr << LOG_PREFIX << "getFileMetadata: Getting file time wrong from: " << path << ". Wrong: " << GetLastError() << std::endl;
             CloseHandle(hFile);
             return "";
         }
@@ -96,7 +97,7 @@ class FileMetadataManagerWindows {
         );
 
         if (securityInfo != ERROR_SUCCESS) {
-            std::cerr << "Getting security info wrong from: " << path << ". Wrong: " << GetLastError() << std::endl;
+            std::cerr << LOG_PREFIX << "getFileMetadata: Getting security info wrong from: " << path << ". Wrong: " << GetLastError() << std::endl;
             CloseHandle(hFile);
             return "";
         }
@@ -106,7 +107,7 @@ class FileMetadataManagerWindows {
         SID_NAME_USE sidType;
 
         if (!LookupAccountSidA(NULL, pSidOwner, name, &nameSize, domain, &domainSize, &sidType)) {
-            std::cerr << "Looking up account sid wrong: " << GetLastError() << std::endl;
+            std::cerr << LOG_PREFIX << "getFileMetadata: Looking up account sid wrong: " << GetLastError() << std::endl;
             LocalFree(pSD);
             CloseHandle(hFile);
             return "";
@@ -166,7 +167,7 @@ class FileMetadataManagerWindows {
                 NULL
             );
             if (hFileWriteTime == INVALID_HANDLE_VALUE) {
-                std::cerr << "Opening file wrong: " << GetLastError() << std::endl;
+                std::cerr << LOG_PREFIX << "setFileMetadata: Opening file wrong: " << GetLastError() << std::endl;
                 return false;
             }
             FILETIME creationTime, lastAccessTime, lastWriteTime;
@@ -175,7 +176,7 @@ class FileMetadataManagerWindows {
             lastWriteTime = StringToFileTime(fileMetadataJson["lastWriteTime"]);
 
             if (!SetFileTime(hFileWriteTime, &creationTime, &lastAccessTime, &lastWriteTime)) {
-                std::cerr << "Setting file time wrong for: " << destinationPath << ". Wrong: " << GetLastError() << std::endl;
+                std::cerr << LOG_PREFIX << "setFileMetadata: Setting file time wrong for: " << destinationPath << ". Wrong: " << GetLastError() << std::endl;
                 CloseHandle(hFileWriteTime);
                 return false;
             }
@@ -194,7 +195,7 @@ class FileMetadataManagerWindows {
             LookupAccountNameA(NULL, owner.c_str(), NULL, &sidSize, domain, &domainSize, &sidType);
             pSidOwner = (PSID)malloc(sidSize);
             if (LookupAccountNameA(NULL, owner.c_str(), pSidOwner, &sidSize, domain, &domainSize, &sidType)) {
-                std::cerr << "Looking up account name wrong: " << GetLastError() << std::endl;
+                std::cerr << LOG_PREFIX << "setFileMetadata: Looking up account name wrong: " << GetLastError() << std::endl;
                 free(pSidOwner);
                 return false;
             }
@@ -209,11 +210,11 @@ class FileMetadataManagerWindows {
                 NULL
             );
             if (hFileWriteOwner == INVALID_HANDLE_VALUE) {
-                std::cerr << "Opening file wrong: " << GetLastError() << std::endl;
+                std::cerr << LOG_PREFIX << "setFileMetadata: Opening file wrong: " << GetLastError() << std::endl;
                 return false;
             }
             if (SetSecurityInfo(hFileWriteOwner, SE_FILE_OBJECT, OWNER_SECURITY_INFORMATION, pSidOwner, NULL, NULL, NULL)) {
-                std::cerr << "Setting security info wrong for: " << destinationPath << ". Wrong: " << GetLastError() << std::endl;
+                std::cerr << LOG_PREFIX << "setFileMetadata: Setting security info wrong for: " << destinationPath << ". Wrong: " << GetLastError() << std::endl;
                 free(pSidOwner);
                 CloseHandle(hFileWriteOwner);
                 return false;
@@ -226,7 +227,7 @@ class FileMetadataManagerWindows {
             // 文件 Mode
             DWORD fileAttributes = GetFileAttributesA(destinationPath.c_str());
             if (fileAttributes == INVALID_FILE_ATTRIBUTES) {
-                std::cerr << "Getting attributes wrong from: " << destinationPath << ". Wrong: " << GetLastError() << std::endl;
+                std::cerr << LOG_PREFIX << "setFileMetadata: Getting attributes wrong from: " << destinationPath << ". Wrong: " << GetLastError() << std::endl;
                 return false;
             }
             if (fileMetadataJson["isReadOnly"]) {
@@ -240,7 +241,7 @@ class FileMetadataManagerWindows {
                 fileAttributes &= ~FILE_ATTRIBUTE_HIDDEN;
             }
             if (!SetFileAttributesA(destinationPath.c_str(), fileAttributes)) {
-                std::cerr << "Setting file attributes wrong for: " << destinationPath << ". Wrong: " << GetLastError() << std::endl;
+                std::cerr << LOG_PREFIX << "setFileMetadata: Setting file attributes wrong for: " << destinationPath << ". Wrong: " << GetLastError() << std::endl;
                 return false;
             }
         }

@@ -5,6 +5,7 @@
 #include <windows.h>
 #include <jni.h>
 #define SYMLINK_FLAG_RELATIVE 1
+#define LOG_PREFIX "[SymbolicLinkManagerWindows]"
 
 std::wstring jstringToWstring(JNIEnv *env, jstring jstr) {
     const jchar* raw = env->GetStringChars(jstr, nullptr);
@@ -19,6 +20,7 @@ jstring wstringToJstring(JNIEnv* env, const std::wstring& wstr) {
 }
 
 class SymbolicLinkManagerWindows {
+
     public:
     static bool isSymbolicLink(const std::wstring& path) {
         // 读取文件
@@ -33,7 +35,7 @@ class SymbolicLinkManagerWindows {
         );
 
         if (hFile == INVALID_HANDLE_VALUE) {
-            std::cerr << "Opening file wrong: " << GetLastError() << std::endl;
+            std::cerr << LOG_PREFIX << "isSymbolicLink: Opening file wrong: " << GetLastError() << std::endl;
         }
 
         char buffer[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
@@ -66,14 +68,14 @@ class SymbolicLinkManagerWindows {
                                NULL);
 
         if (hFile == INVALID_HANDLE_VALUE) {
-            std::cerr << "Opening file wrong: " << GetLastError() << std::endl;
+            std::cerr << LOG_PREFIX << "getSymbolicLinkTarget: Opening file wrong: " << GetLastError() << std::endl;
         }
 
         char buffer[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
         DWORD dwBytesReturned;
 
         if (!DeviceIoControl(hFile, FSCTL_GET_REPARSE_POINT, NULL, 0, buffer, sizeof(buffer), &dwBytesReturned, NULL)) {
-            std::cerr << "Getting reparse point wrong: " << GetLastError() << std::endl;
+            std::cerr << LOG_PREFIX << "getSymbolicLinkTarget: Getting reparse point wrong: " << GetLastError() << std::endl;
             CloseHandle(hFile);
         }
 
@@ -93,7 +95,7 @@ class SymbolicLinkManagerWindows {
 
         DWORD attributes = GetFileAttributesW(path.c_str());
         if (attributes == INVALID_FILE_ATTRIBUTES) {
-            std::cerr << "Getting file attributes wrong: " << GetLastError() << std::endl;
+            std::cerr << LOG_PREFIX << "getSymbolicLinkTarget: Getting file attributes wrong: " << GetLastError() << std::endl;
         }
         
         bool isDirectory = (attributes & FILE_ATTRIBUTE_DIRECTORY);

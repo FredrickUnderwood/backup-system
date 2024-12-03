@@ -102,9 +102,9 @@ public class CaseServiceImpl implements CaseService {
                 case COMPRESS_BACKUP -> backupService.compressBackup(executionParam);
             };
             case RESTORE -> executionResult = switch (caseExecutionParam.getBackupMode()) {
-                case BASE_BACKUP -> restoreService.baseRestore(caseExecutionParam.getCaseId());
-                case PACK_BACKUP -> restoreService.packRestore(caseExecutionParam.getCaseId());
-                case COMPRESS_BACKUP -> restoreService.compressRestore(caseExecutionParam.getCaseId());
+                case BASE_BACKUP -> restoreService.baseRestore(executionParam);
+                case PACK_BACKUP -> restoreService.packRestore(executionParam);
+                case COMPRESS_BACKUP -> restoreService.compressRestore(executionParam);
             };
             default -> throw new IllegalArgumentException("Unsupported execution type: " + caseExecutionParam.getExecutionType());
         }

@@ -10,6 +10,7 @@ import com.uestc.backupsystem.enums.BackupMode;
 import com.uestc.backupsystem.enums.ExecutionType;
 import com.uestc.backupsystem.enums.FailureType;
 import com.uestc.backupsystem.enums.FileType;
+import com.uestc.backupsystem.jni.HuffmanCompressionManager;
 import com.uestc.backupsystem.mapper.ExecutionRecordMapper;
 import com.uestc.backupsystem.mapper.FailureFileRecordMapper;
 import com.uestc.backupsystem.service.BackupService;
@@ -37,6 +38,9 @@ public class BackupServiceImpl implements BackupService {
 
     @Autowired
     private FailureFileRecordMapper failureFileRecordMapper;
+
+    @Autowired
+    private HuffmanCompressionManager huffmanCompressionManager;
 
     @Override
     public ExecutionResultDTO baseBackup(ExecutionParamDTO executionParam) {
@@ -83,7 +87,33 @@ public class BackupServiceImpl implements BackupService {
 
     @Override
     public ExecutionResultDTO compressBackup(ExecutionParamDTO executionParam) {
-        return null;
+        String sourcePath = executionParam.getSourcePath(); // E:/workstation.bin
+        String destinationPath = executionParam.getDestinationPath(); // D:/backup/workstation.bin
+        // 执行备份
+        huffmanCompressionManager.compress(sourcePath, destinationPath);
+        log.info("{}{} from {} to {}.", LOG_PREFIX, "Compress backup executed", sourcePath, destinationPath);
+
+        // 插入一条执行记录
+        ExecutionRecordDAO executionRecord = new ExecutionRecordDAO();
+        executionRecord.setCaseId(executionParam.getCaseId());
+        executionRecord.setExecutionType(ExecutionType.BACKUP);
+        executionRecord.setBackupMode(BackupMode.COMPRESS_BACKUP);
+        executionRecord.setSourcePath(sourcePath);
+        executionRecord.setDestinationPath(destinationPath);
+        executionRecord.setExecutionTime(LocalDateTime.now());
+        executionRecordMapper.insertExecutionRecord(executionRecord);
+        log.info("{}{}.", LOG_PREFIX, "Compress backup execution_record inserted");
+
+        TransmitResultDTO transmitResult = new TransmitResultDTO();
+        transmitResult.setTransmitSuccess(true);
+        SolveDiffResultDTO solveDiffResult = new SolveDiffResultDTO();
+        solveDiffResult.setSolveDiffSuccess(true);
+        ExecutionResultDTO executionResult = new ExecutionResultDTO();
+        executionResult.setTransmitResultDTO(transmitResult);
+        executionResult.setSolveDiffResultDTO(solveDiffResult);
+        log.info("{}{}: {}.", LOG_PREFIX, "Compress backup result", JSON.toJSONString(executionResult));
+        return executionResult;
+
     }
 
     private void insertFailureRecords(long executionId, LinkedHashMap<File, FileType> failureFileList, FailureType failureType) {

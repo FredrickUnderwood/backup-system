@@ -5,6 +5,7 @@ import com.uestc.backupsystem.dao.CaseRecordDAO;
 import com.uestc.backupsystem.dao.ExecutionRecordDAO;
 import com.uestc.backupsystem.dao.FailureFileRecordDAO;
 import com.uestc.backupsystem.dto.*;
+import com.uestc.backupsystem.enums.BackupMode;
 import com.uestc.backupsystem.mapper.CaseRecordMapper;
 import com.uestc.backupsystem.mapper.ExecutionRecordMapper;
 import com.uestc.backupsystem.mapper.FailureFileRecordMapper;
@@ -92,7 +93,7 @@ public class CaseServiceImpl implements CaseService {
         ExecutionParamDTO executionParam = new ExecutionParamDTO();
         executionParam.setCaseId(caseExecutionParam.getCaseId());
         executionParam.setSourcePath(caseRecord.getSourcePath());
-        executionParam.setDestinationPath(createDestinationPath(caseRecord));
+        executionParam.setDestinationPath(createDestinationPath(caseRecord, caseExecutionParam.getBackupMode()));
         executionParam.setMetadataSupport(caseExecutionParam.isMetadataSupport());
         ExecutionResultDTO executionResult;
         switch (caseExecutionParam.getExecutionType()) {
@@ -139,12 +140,30 @@ public class CaseServiceImpl implements CaseService {
         }
     }
 
-    private String createDestinationPath(CaseRecordDAO caseRecord) {
+    private String createDestinationPath(CaseRecordDAO caseRecord, BackupMode backupMode) {
         String sourcePath = caseRecord.getSourcePath();
         String backupPath = caseRecord.getBackupPath();
         File sourceDir = new File(sourcePath);
         File backupDir = new File(backupPath);
-        File destinationDir = new File(backupDir, sourceDir.getName());
-        return destinationDir.getAbsolutePath();
+        switch (backupMode) {
+            case BASE_BACKUP -> {
+                File destinationDir = new File(backupDir, sourceDir.getName());
+                return destinationDir.getAbsolutePath();
+            }
+            case PACK_BACKUP -> {
+                // 未实现
+            }
+            case COMPRESS_BACKUP -> {
+                String sourceName = sourceDir.getName();
+                int dotIndex = sourceName.lastIndexOf('.');
+                if (dotIndex > 0) {
+                    sourceName = sourceName.substring(0, dotIndex);
+                }
+                File destinationDir = new File(backupDir, sourceName + ".bin");
+                return destinationDir.getAbsolutePath();
+            }
+            default -> throw new IllegalArgumentException("Unsupported backup mode: " + backupMode);
+        }
+        return null;
     }
 }

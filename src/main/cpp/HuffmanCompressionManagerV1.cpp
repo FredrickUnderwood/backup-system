@@ -10,6 +10,7 @@
 #include <map>
 #include <io.h>
 #include <windows.h>
+#include <filesystem>
 #include <jni.h>
 #define LOG_PREFIX "[HuffmanCompressionManager]"
 
@@ -25,6 +26,13 @@ struct HuffmanNode
     {
         return freq > other.freq;
     }
+};
+struct FileEntry {
+    std::string path;
+    bool isDirectory;
+    uint32_t fileSize;
+    FileEntry(const std::string& p, bool isDir, uint32_t size = 0) 
+        : path(p), isDirectory(isDir), fileSize(size) {}
 };
 class HuffmanCompressionManager
 {
@@ -283,109 +291,183 @@ private:
         outputFile.close();
     }
 
-    static void compressDir(const std::string inputDirName, std::ofstream &outputFile)
-    {
-        // 写入当前路径名
-        uint32_t dirNameLength = inputDirName.length();
-        outputFile.write(reinterpret_cast<const char *>(&dirNameLength), sizeof(dirNameLength));
-        outputFile.write(inputDirName.c_str(), dirNameLength);
-        // fileSize为0，用于区分目录和文件
-        uint32_t fileSize = 0;
-        outputFile.write(reinterpret_cast<const char *>(&fileSize), sizeof(fileSize));
-
-        struct _finddata_t file;
-        std::string path = inputDirName + "/" + "*";
-        long hFile = _findfirst(path.c_str(), &file);
-        if (hFile != -1)
-        {
-            do
-            {
-                if (file.attrib & _A_SUBDIR)
-                {
-                    if (strcmp(file.name, ".") != 0 && strcmp(file.name, "..") != 0)
-                    {
-                        std::string nextPath = inputDirName + "/" + file.name;
-                        compressDir(nextPath, outputFile);
+    static bool createDirectoryRecursively(const std::string& path) {
+        size_t pos = 0;
+        do {
+            pos = path.find_first_of("/\\", pos + 1);
+            std::string subPath = path.substr(0, pos);
+            if (!subPath.empty()) {
+                if (CreateDirectory(subPath.c_str(), NULL) == 0) {
+                    DWORD error = GetLastError();
+                    if (error != ERROR_ALREADY_EXISTS) {
+                        return false;
                     }
                 }
-                else
-                {
-                    std::string filePath = inputDirName + "/" + file.name;
+            }
+        } while (pos != std::string::npos);
+        return true;
+    }
 
-                    // 写入当前文件名
-                    uint32_t fileNameLength = filePath.length();
-                    outputFile.write(reinterpret_cast<const char *>(&fileNameLength), sizeof(fileNameLength));
-                    outputFile.write(filePath.c_str(), fileNameLength);
-                    uint32_t fileSize = file.size;
-                    outputFile.write(reinterpret_cast<const char *>(&fileSize), sizeof(fileSize));
-                    compressFile(filePath, outputFile);
+    static void compressDir(const std::string& rootPath, std::ofstream& outputFile) {
+        std::stack<FileEntry> dirStack;
+        dirStack.push(FileEntry(rootPath, true));
+
+        while (!dirStack.empty()) {
+            FileEntry current = dirStack.top();
+            dirStack.pop();
+
+            try {
+                // 写入当前路径信息
+                uint32_t pathLength = current.path.length();
+                outputFile.write(reinterpret_cast<const char*>(&pathLength), sizeof(pathLength));
+                outputFile.write(current.path.c_str(), pathLength);
+                outputFile.write(reinterpret_cast<const char*>(&current.fileSize), sizeof(current.fileSize));
+
+                // 如果是文件，进行压缩
+                if (!current.isDirectory) {
+                    compressFile(current.path, outputFile);
+                    continue;
                 }
-            } while (_findnext(hFile, &file) == 0);
-        }
-        else
-        {
-            std::cerr << LOG_PREFIX << "compressDir: Opening dir wrong at " << inputDirName << std::endl;
+
+                // 处理目录内容
+                WIN32_FIND_DATA findData;
+                std::string searchPath = current.path + "/*";
+                HANDLE hFind = FindFirstFile(searchPath.c_str(), &findData);
+
+                if (hFind != INVALID_HANDLE_VALUE) {
+                    do {
+                        std::string fileName = findData.cFileName;
+                        if (fileName != "." && fileName != "..") {
+                            std::string fullPath = current.path + "/" + fileName;
+                            bool isDir = (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+                            
+                            if (isDir) {
+                                dirStack.push(FileEntry(fullPath, true, 0));
+                            } else {
+                                LARGE_INTEGER fileSize;
+                                fileSize.LowPart = findData.nFileSizeLow;
+                                fileSize.HighPart = findData.nFileSizeHigh;
+                                dirStack.push(FileEntry(fullPath, false, 
+                                    static_cast<uint32_t>(fileSize.QuadPart)));
+                            }
+                        }
+                    } while (FindNextFile(hFind, &findData));
+                    
+                    FindClose(hFind);
+                } else {
+                    throw std::runtime_error("无法访问目录: " + current.path);
+                }
+            } catch (const std::exception& e) {
+                std::cerr << LOG_PREFIX << "Error processing " << current.path 
+                         << ": " << e.what() << std::endl;
+                throw;
+            }
         }
     }
 
-    static void decompressDir(std::ifstream &inputFile)
-    {
-        while (!inputFile.eof())
-        {
-            uint32_t nameLength;
-            inputFile.read(reinterpret_cast<char *>(&nameLength), sizeof(nameLength));
-            std::string name(nameLength, '\0');
-            inputFile.read(&name[0], nameLength);
+    static void decompressDir(std::ifstream& inputFile) {
+        try {
+            while (!inputFile.eof()) {
+                // 读取路径信息
+                uint32_t nameLength;
+                if (!inputFile.read(reinterpret_cast<char*>(&nameLength), sizeof(nameLength))) {
+                    if (inputFile.eof()) break;
+                    throw std::runtime_error("读取文件长度失败");
+                }
 
-            uint32_t fileSize;
-            inputFile.read(reinterpret_cast<char *>(&fileSize), sizeof(fileSize));
+                std::string name(nameLength, '\0');
+                if (!inputFile.read(&name[0], nameLength)) {
+                    throw std::runtime_error("读取文件名失败");
+                }
 
-            if (fileSize == 0)
-            {
-                // 在输出目录中创建相应的目录
-                if (CreateDirectory(name.c_str(), NULL) == 0)
-                {
-                    std::cerr << LOG_PREFIX << "decompressDir: Failed to create directory " << name << std::endl;
+                uint32_t fileSize;
+                if (!inputFile.read(reinterpret_cast<char*>(&fileSize), sizeof(fileSize))) {
+                    throw std::runtime_error("读取文件大小失败");
+                }
+
+                // 创建必要的目录
+                size_t lastSlash = name.find_last_of("/\\");
+                if (lastSlash != std::string::npos) {
+                    std::string dirPath = name.substr(0, lastSlash);
+                    if (!dirPath.empty()) {
+                        createDirectoryRecursively(dirPath);
+                    }
+                }
+
+                if (fileSize == 0) {
+                    // 创建目录
+                    if (!CreateDirectory(name.c_str(), NULL)) {
+                        DWORD error = GetLastError();
+                        if (error != ERROR_ALREADY_EXISTS) {
+                            throw std::runtime_error("创建目录失败: " + name);
+                        }
+                    }
+                } else {
+                    // 解压文件
+                    decompressFile(inputFile, name);
                 }
             }
-            else
-            {
-                decompressFile(inputFile, name);
-            }
+        } catch (const std::exception& e) {
+            std::cerr << LOG_PREFIX << "解压失败: " << e.what() << std::endl;
+            throw;
         }
     }
 
 public:
-    static void compress(const std::string inputName, const std::string outputName)
-    {
-        DWORD fileAttributes = GetFileAttributes(inputName.c_str());
-        bool isDirectory = (fileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
-        if (isDirectory)
-        {
-            std::ofstream outputFile(outputName, std::ios::binary);
-            compressDir(inputName, outputFile);
-            outputFile.close();
-        }
-        else
-        {
-            compressFile(inputName, outputName);
+    
+    static void compress(const std::string& inputName, const std::string& outputName) {
+        try {
+            DWORD fileAttributes = GetFileAttributes(inputName.c_str());
+            if (fileAttributes == INVALID_FILE_ATTRIBUTES) {
+                throw std::runtime_error("无法访问输入路径: " + inputName);
+            }
+
+            bool isDirectory = (fileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+            if (isDirectory) {
+                std::ofstream outputFile(outputName, std::ios::binary);
+                if (!outputFile) {
+                    throw std::runtime_error("无法创建输出文件: " + outputName);
+                }
+                compressDir(inputName, outputFile);
+                outputFile.close();
+            } else {
+                compressFile(inputName, outputName);
+            }
+        } catch (const std::exception& e) {
+            std::cerr << LOG_PREFIX << "压缩失败: " << e.what() << std::endl;
+            throw;
         }
     }
 
-    // backup source
-    static void decompress(const std::string inputName, const std::string outputName)
-    {
-        DWORD fileAttributes = GetFileAttributes(outputName.c_str());
-        bool isDirectory = (fileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
-        if (isDirectory)
-        {
+    static void decompress(const std::string& inputName, const std::string& outputName) {
+        try {
             std::ifstream inputFile(inputName, std::ios::binary);
-            decompressDir(inputFile);
+            if (!inputFile) {
+                throw std::runtime_error("无法打开输入文件: " + inputName);
+            }
+
+            DWORD fileAttributes = GetFileAttributes(outputName.c_str());
+            bool outputExists = (fileAttributes != INVALID_FILE_ATTRIBUTES);
+            bool isDirectory = outputExists && (fileAttributes & FILE_ATTRIBUTE_DIRECTORY);
+
+            if (outputExists) {
+                if (isDirectory) {
+                    decompressDir(inputFile);
+                } else {
+                    decompressFile(inputName, outputName);
+                }
+            } else {
+                // 如果输出路径不存在，先尝试创建目录
+                if (!createDirectoryRecursively(outputName)) {
+                    throw std::runtime_error("无法创建输出目录: " + outputName);
+                }
+                decompressDir(inputFile);
+            }
+            
             inputFile.close();
-        }
-        else
-        {
-            decompressFile(inputName, outputName);
+        } catch (const std::exception& e) {
+            std::cerr << LOG_PREFIX << "解压失败: " << e.what() << std::endl;
+            throw;
         }
     }
 };

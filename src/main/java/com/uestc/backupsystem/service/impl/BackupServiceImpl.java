@@ -87,10 +87,11 @@ public class BackupServiceImpl implements BackupService {
 
     @Override
     public ExecutionResultDTO compressBackup(ExecutionParamDTO executionParam) {
-        String sourcePath = executionParam.getSourcePath(); // E:/workstation.bin
+        String sourcePath = executionParam.getSourcePath(); // E:/workstation
         String destinationPath = executionParam.getDestinationPath(); // D:/backup/workstation.bin
+        String formatDestinationPath = destinationPath.replace("\\", "/");
         // 执行备份
-        huffmanCompressionManager.compress(sourcePath, destinationPath);
+        huffmanCompressionManager.compress(sourcePath, formatDestinationPath);
         log.info("{}{} from {} to {}.", LOG_PREFIX, "Compress backup executed", sourcePath, destinationPath);
 
         // 插入一条执行记录

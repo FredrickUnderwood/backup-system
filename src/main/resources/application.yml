@@ -4,6 +4,8 @@ spring:
     url: jdbc:mysql://localhost:3306/backup_system
     username: root
     password: root
+  jvm:
+    args=-Xss2m:
 mybatis:
   mapper-locations: classpath*:mapper/*.xml
   type-aliases-package: com.uestc.backupsystem.entity

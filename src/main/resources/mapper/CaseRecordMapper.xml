@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.uestc.backupsystem.mapper.CaseRecordMapper">
+
+    <select id="getCaseRecordById" parameterType="long" resultType="com.uestc.backupsystem.dao.CaseRecordDAO">
+        SELECT * FROM case_record
+        WHERE id = #{id}
+    </select>
+    <insert id="insertCaseRecord" parameterType="com.uestc.backupsystem.dao.CaseRecordDAO">
+        INSERT INTO case_record (source_path, backup_path, created_time, updated_time)
+        VALUES (#{sourcePath}, #{backupPath}, #{createdTime}, #{updatedTime})
+    </insert>
+    <select id="getAllCaseRecordsBySourcePathAndBackupPath" parameterType="map" resultType="com.uestc.backupsystem.dao.CaseRecordDAO">
+        SELECT * FROM case_record
+        WHERE source_path = #{sourcePath} AND backup_path = #{backupPath}
+    </select>
+    <update id="updateCaseRecordUpdatedTime" parameterType="map">
+        UPDATE case_record
+        SET updated_time = #{updatedTime}
+        WHERE id = #{id}
+    </update>
+    <update id="updateCaseRecordBackupPath" parameterType="map">
+        UPDATE case_record
+        SET backup_path = #{backupPath}
+        WHERE id = #{id}
+    </update>
+    <select id="getAllCaseRecords" resultType="com.uestc.backupsystem.dao.CaseRecordDAO">
+        SELECT * FROM case_record
+    </select>
+    <select id="deleteCaseById" parameterType="long">
+        DELETE FROM case_record
+        WHERE id = #{id}
+    </select>
+
+</mapper>

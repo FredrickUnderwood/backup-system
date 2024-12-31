@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.uestc.backupsystem.mapper.ExecutionRecordMapper">
+    <insert id="insertExecutionRecord" parameterType="com.uestc.backupsystem.dao.ExecutionRecordDAO">
+        INSERT INTO execution_record (case_id, execution_type, backup_mode, source_path, destination_path, execution_time, is_transmit_success, is_solve_diff_success, is_metadata_support, is_metadata_support_success)
+        VALUES (#{caseId}, #{executionType}, #{backupMode}, #{sourcePath}, #{destinationPath}, #{executionTime}, #{isTransmitSuccess}, #{isSolveDiffSuccess}, #{isMetadataSupport}, #{isMetadataSupportSuccess})
+    </insert>
+    <select id="getAllExecutionRecordsByCaseId" parameterType="long" resultType="com.uestc.backupsystem.dao.ExecutionRecordDAO">
+        SELECT * FROM execution_record
+        WHERE case_id = #{caseId}
+    </select>
+    <select id="getExecutionRecordById" parameterType="long" resultType="com.uestc.backupsystem.dao.ExecutionRecordDAO">
+        SELECT * FROM execution_record
+        WHERE id = #{id}
+    </select>
+</mapper>

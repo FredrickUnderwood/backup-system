@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.uestc.backupsystem.mapper.FailureFileRecordMapper">
+    <insert id="insertFailureFileRecord" parameterType="com.uestc.backupsystem.dao.FailureFileRecordDAO">
+        INSERT INTO failure_file_record (id, execution_id, failure_type, file, file_type)
+        VALUES (#{id}, #{executionId}, #{failureType}, #{file}, #{fileType})
+    </insert>
+    <select id="getAllFailureFileRecordsByExecutionId" parameterType="long" resultType="com.uestc.backupsystem.dao.FailureFileRecordDAO">
+        SELECT * FROM failure_file_record
+        WHERE execution_id = #{executionId}
+    </select>
+</mapper>

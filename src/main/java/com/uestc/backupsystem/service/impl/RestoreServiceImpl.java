@@ -95,7 +95,7 @@ public class RestoreServiceImpl implements RestoreService {
         // 插入一条执行记录
         ExecutionRecordDAO executionRecord = new ExecutionRecordDAO();
         executionRecord.setCaseId(executionParam.getCaseId());
-        executionRecord.setExecutionType(ExecutionType.BACKUP);
+        executionRecord.setExecutionType(ExecutionType.RESTORE);
         executionRecord.setBackupMode(BackupMode.COMPRESS_BACKUP);
         executionRecord.setSourcePath(sourcePath);
         executionRecord.setDestinationPath(destinationPath);

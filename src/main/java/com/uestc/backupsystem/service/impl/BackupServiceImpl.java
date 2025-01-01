@@ -91,6 +91,10 @@ public class BackupServiceImpl implements BackupService {
         String formatDestinationPath = destinationPath.replace("\\", "/");
         // 执行备份
         packManager.pack(sourcePath, formatDestinationPath);
+        TransmitResultDTO transmitResult = new TransmitResultDTO();
+        transmitResult.setTransmitSuccess(true);
+        SolveDiffResultDTO solveDiffResult = new SolveDiffResultDTO();
+        solveDiffResult.setSolveDiffSuccess(true);
         log.info("{}{} from {} to {}.", LOG_PREFIX, "Pack backup executed", sourcePath, destinationPath);
 
         // 插入一条执行记录
@@ -101,13 +105,12 @@ public class BackupServiceImpl implements BackupService {
         executionRecord.setSourcePath(sourcePath);
         executionRecord.setDestinationPath(destinationPath);
         executionRecord.setExecutionTime(LocalDateTime.now());
+        executionRecord.setTransmitSuccess(transmitResult.isTransmitSuccess());
+        executionRecord.setSolveDiffSuccess(solveDiffResult.isSolveDiffSuccess());
         executionRecordMapper.insertExecutionRecord(executionRecord);
         log.info("{}{}.", LOG_PREFIX, "Pack backup execution_record inserted");
 
-        TransmitResultDTO transmitResult = new TransmitResultDTO();
-        transmitResult.setTransmitSuccess(true);
-        SolveDiffResultDTO solveDiffResult = new SolveDiffResultDTO();
-        solveDiffResult.setSolveDiffSuccess(true);
+
         ExecutionResultDTO executionResult = new ExecutionResultDTO();
         executionResult.setTransmitResultDTO(transmitResult);
         executionResult.setSolveDiffResultDTO(solveDiffResult);
@@ -122,6 +125,10 @@ public class BackupServiceImpl implements BackupService {
         String formatDestinationPath = destinationPath.replace("\\", "/");
         // 执行备份
         huffmanCompressionManager.compress(sourcePath, formatDestinationPath);
+        TransmitResultDTO transmitResult = new TransmitResultDTO();
+        transmitResult.setTransmitSuccess(true);
+        SolveDiffResultDTO solveDiffResult = new SolveDiffResultDTO();
+        solveDiffResult.setSolveDiffSuccess(true);
         log.info("{}{} from {} to {}.", LOG_PREFIX, "Compress backup executed", sourcePath, destinationPath);
 
         // 插入一条执行记录
@@ -132,13 +139,11 @@ public class BackupServiceImpl implements BackupService {
         executionRecord.setSourcePath(sourcePath);
         executionRecord.setDestinationPath(destinationPath);
         executionRecord.setExecutionTime(LocalDateTime.now());
+        executionRecord.setTransmitSuccess(transmitResult.isTransmitSuccess());
+        executionRecord.setSolveDiffSuccess(solveDiffResult.isSolveDiffSuccess());
         executionRecordMapper.insertExecutionRecord(executionRecord);
         log.info("{}{}.", LOG_PREFIX, "Compress backup execution_record inserted");
 
-        TransmitResultDTO transmitResult = new TransmitResultDTO();
-        transmitResult.setTransmitSuccess(true);
-        SolveDiffResultDTO solveDiffResult = new SolveDiffResultDTO();
-        solveDiffResult.setSolveDiffSuccess(true);
         ExecutionResultDTO executionResult = new ExecutionResultDTO();
         executionResult.setTransmitResultDTO(transmitResult);
         executionResult.setSolveDiffResultDTO(solveDiffResult);

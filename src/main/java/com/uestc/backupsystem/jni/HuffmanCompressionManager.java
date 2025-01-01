@@ -1,11 +1,19 @@
 package com.uestc.backupsystem.jni;
 
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
+
+import java.io.IOException;
 
 @Component
 public class HuffmanCompressionManager {
     static {
-        String huffmanCompressionManagerLibPath = "E:/BackupSystem/src/main/resources/dll/huffman_compression_manager.dll";
+        String huffmanCompressionManagerLibPath = null;
+        try {
+            huffmanCompressionManagerLibPath = new ClassPathResource("dll/huffman_compression_manager.dll").getFile().getAbsolutePath();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         System.load(huffmanCompressionManagerLibPath);
     }
 

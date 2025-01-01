@@ -151,7 +151,13 @@ public class CaseServiceImpl implements CaseService {
                 return destinationDir.getAbsolutePath();
             }
             case PACK_BACKUP -> {
-                // 未实现
+                String sourceName = sourceDir.getName();
+                int dotIndex = sourceName.lastIndexOf('.');
+                if (dotIndex > 0) {
+                    sourceName = sourceName.substring(0, dotIndex);
+                }
+                File destinationDir = new File(backupDir, sourceName + ".dat");
+                return destinationDir.getAbsolutePath();
             }
             case COMPRESS_BACKUP -> {
                 String sourceName = sourceDir.getName();
@@ -164,6 +170,5 @@ public class CaseServiceImpl implements CaseService {
             }
             default -> throw new IllegalArgumentException("Unsupported backup mode: " + backupMode);
         }
-        return null;
     }
 }

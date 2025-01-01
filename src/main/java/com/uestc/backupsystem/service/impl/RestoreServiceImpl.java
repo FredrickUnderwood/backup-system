@@ -10,6 +10,7 @@ import com.uestc.backupsystem.dto.SolveDiffResultDTO;
 import com.uestc.backupsystem.dto.TransmitResultDTO;
 import com.uestc.backupsystem.enums.*;
 import com.uestc.backupsystem.jni.HuffmanCompressionManager;
+import com.uestc.backupsystem.jni.PackManager;
 import com.uestc.backupsystem.mapper.CaseRecordMapper;
 import com.uestc.backupsystem.mapper.ExecutionRecordMapper;
 import com.uestc.backupsystem.mapper.FailureFileRecordMapper;
@@ -41,6 +42,9 @@ public class RestoreServiceImpl implements RestoreService {
 
     @Autowired
     private HuffmanCompressionManager huffmanCompressionManager;
+
+    @Autowired
+    private PackManager packManager;
 
     @Override
     public ExecutionResultDTO baseRestore(ExecutionParamDTO executionParam) {
@@ -80,7 +84,33 @@ public class RestoreServiceImpl implements RestoreService {
 
     @Override
     public ExecutionResultDTO packRestore(ExecutionParamDTO executionParam) {
-        return null;
+        String sourcePath = executionParam.getDestinationPath(); // D:/backup/workstation.dat
+        String destinationPath = executionParam.getSourcePath(); // E:/workstation
+        String destinationFilePath = new File(destinationPath).getParentFile().getAbsolutePath(); // E:/
+        // 执行备份
+        packManager.unpack(sourcePath, destinationFilePath);
+        log.info("{}{} from {} to {}.", LOG_PREFIX, "Pack restore executed", sourcePath, destinationPath);
+
+        // 插入一条执行记录
+        ExecutionRecordDAO executionRecord = new ExecutionRecordDAO();
+        executionRecord.setCaseId(executionParam.getCaseId());
+        executionRecord.setExecutionType(ExecutionType.RESTORE);
+        executionRecord.setBackupMode(BackupMode.PACK_BACKUP);
+        executionRecord.setSourcePath(sourcePath);
+        executionRecord.setDestinationPath(destinationPath);
+        executionRecord.setExecutionTime(LocalDateTime.now());
+        executionRecordMapper.insertExecutionRecord(executionRecord);
+        log.info("{}{}.", LOG_PREFIX, "Pack restore execution_record inserted");
+
+        TransmitResultDTO transmitResult = new TransmitResultDTO();
+        transmitResult.setTransmitSuccess(true);
+        SolveDiffResultDTO solveDiffResult = new SolveDiffResultDTO();
+        solveDiffResult.setSolveDiffSuccess(true);
+        ExecutionResultDTO executionResult = new ExecutionResultDTO();
+        executionResult.setTransmitResultDTO(transmitResult);
+        executionResult.setSolveDiffResultDTO(solveDiffResult);
+        log.info("{}{}: {}.", LOG_PREFIX, "Pack restore result", JSON.toJSONString(executionResult));
+        return executionResult;
     }
 
     @Override

@@ -11,6 +11,7 @@ import com.uestc.backupsystem.enums.ExecutionType;
 import com.uestc.backupsystem.enums.FailureType;
 import com.uestc.backupsystem.enums.FileType;
 import com.uestc.backupsystem.jni.HuffmanCompressionManager;
+import com.uestc.backupsystem.jni.PackManager;
 import com.uestc.backupsystem.mapper.ExecutionRecordMapper;
 import com.uestc.backupsystem.mapper.FailureFileRecordMapper;
 import com.uestc.backupsystem.service.BackupService;
@@ -41,6 +42,9 @@ public class BackupServiceImpl implements BackupService {
 
     @Autowired
     private HuffmanCompressionManager huffmanCompressionManager;
+
+    @Autowired
+    private PackManager packManager;
 
     @Override
     public ExecutionResultDTO baseBackup(ExecutionParamDTO executionParam) {
@@ -82,7 +86,33 @@ public class BackupServiceImpl implements BackupService {
 
     @Override
     public ExecutionResultDTO packBackup(ExecutionParamDTO executionParam) {
-        return null;
+        String sourcePath = executionParam.getSourcePath(); // E:/workstation
+        String destinationPath = executionParam.getDestinationPath(); // D:/backup/workstation.dat
+        String formatDestinationPath = destinationPath.replace("\\", "/");
+        // 执行备份
+        packManager.pack(sourcePath, formatDestinationPath);
+        log.info("{}{} from {} to {}.", LOG_PREFIX, "Pack backup executed", sourcePath, destinationPath);
+
+        // 插入一条执行记录
+        ExecutionRecordDAO executionRecord = new ExecutionRecordDAO();
+        executionRecord.setCaseId(executionParam.getCaseId());
+        executionRecord.setExecutionType(ExecutionType.BACKUP);
+        executionRecord.setBackupMode(BackupMode.PACK_BACKUP);
+        executionRecord.setSourcePath(sourcePath);
+        executionRecord.setDestinationPath(destinationPath);
+        executionRecord.setExecutionTime(LocalDateTime.now());
+        executionRecordMapper.insertExecutionRecord(executionRecord);
+        log.info("{}{}.", LOG_PREFIX, "Pack backup execution_record inserted");
+
+        TransmitResultDTO transmitResult = new TransmitResultDTO();
+        transmitResult.setTransmitSuccess(true);
+        SolveDiffResultDTO solveDiffResult = new SolveDiffResultDTO();
+        solveDiffResult.setSolveDiffSuccess(true);
+        ExecutionResultDTO executionResult = new ExecutionResultDTO();
+        executionResult.setTransmitResultDTO(transmitResult);
+        executionResult.setSolveDiffResultDTO(solveDiffResult);
+        log.info("{}{}: {}.", LOG_PREFIX, "Pack backup result", JSON.toJSONString(executionResult));
+        return executionResult;
     }
 
     @Override

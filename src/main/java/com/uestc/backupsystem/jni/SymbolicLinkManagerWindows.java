@@ -1,5 +1,6 @@
 package com.uestc.backupsystem.jni;
 
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
 import java.io.*;
@@ -10,10 +11,20 @@ import java.util.List;
 @Component
 public class SymbolicLinkManagerWindows {
 
-    private static final String CREATE_SYMBOLIC_LINK_BAT = "E:\\BackupSystem\\src\\main\\resources\\bat\\create_symbolic_link.bat";
+    private static final String CREATE_SYMBOLIC_LINK_BAT;
 
     static {
-        String symbolicLinkManagerWindowsLibPath = "E:\\BackupSystem\\src\\main\\resources\\dll\\symbolic_link_manager_windows.dll";
+        try {
+            CREATE_SYMBOLIC_LINK_BAT = new ClassPathResource("bat/create_symbolic_link.bat").getFile().getAbsolutePath();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        String symbolicLinkManagerWindowsLibPath = null;
+        try {
+            symbolicLinkManagerWindowsLibPath = new ClassPathResource("dll/symbolic_link_manager_windows.dll").getFile().getAbsolutePath();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         System.load(symbolicLinkManagerWindowsLibPath);
     }
 

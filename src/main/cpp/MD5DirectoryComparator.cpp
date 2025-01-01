@@ -62,6 +62,13 @@ private:
         return file.tellg();
     }
 
+    // 获取文件信息（CRC32和大小）
+    static std::pair<uint32_t, int64_t> getFileInfo(const std::string& filePath) {
+        uint32_t crc = calculateCRC32(filePath);
+        int64_t size = getFileSize(filePath);
+        return std::make_pair(crc, size);
+    }
+
     // 获取目录下所有文件的相对路径和CRC32值
     static std::map<std::string, std::pair<uint32_t, int64_t>> getDirectoryMap(
         const std::string &dirPath, const std::string &basePath = "")
@@ -111,46 +118,68 @@ public:
         std::vector<std::string> differences;
     };
 
-    static ComparisonResult compareDirectories(const std::string &dir1Path,
-                                               const std::string &dir2Path)
-    {
-        try
-        {
+    static ComparisonResult compareDirectories(const std::string& path1, 
+                                             const std::string& path2) {
+        try {
             ComparisonResult result;
             result.isIdentical = true;
 
-            auto fileMap1 = getDirectoryMap(dir1Path);
-            auto fileMap2 = getDirectoryMap(dir2Path);
+            // 获取路径属性
+            DWORD attr1 = GetFileAttributesW(stringToWString(path1).c_str());
+            DWORD attr2 = GetFileAttributesW(stringToWString(path2).c_str());
 
-            for (const auto &pair : fileMap1)
-            {
+            if (attr1 == INVALID_FILE_ATTRIBUTES || attr2 == INVALID_FILE_ATTRIBUTES) {
+                throw std::runtime_error("无法访问路径");
+            }
+
+            bool isDir1 = (attr1 & FILE_ATTRIBUTE_DIRECTORY);
+            bool isDir2 = (attr2 & FILE_ATTRIBUTE_DIRECTORY);
+
+            // 如果两个都是文件
+            if (!isDir1 && !isDir2) {
+                auto fileInfo1 = getFileInfo(path1);
+                auto fileInfo2 = getFileInfo(path2);
+
+                if (fileInfo1 != fileInfo2) {
+                    result.isIdentical = false;
+                    result.differences.push_back("文件内容不同");
+                }
+                return result;
+            }
+
+            // 如果一个是文件，一个是目录
+            if (isDir1 != isDir2) {
+                result.isIdentical = false;
+                result.differences.push_back("类型不匹配：一个是文件，一个是目录");
+                return result;
+            }
+
+            // 如果两个都是目录
+            auto fileMap1 = getDirectoryMap(path1);
+            auto fileMap2 = getDirectoryMap(path2);
+
+            // 比较目录内容
+            for (const auto& pair : fileMap1) {
                 auto it = fileMap2.find(pair.first);
-                if (it == fileMap2.end())
-                {
+                if (it == fileMap2.end()) {
                     result.differences.push_back("文件只存在于目录1: " + pair.first);
                     result.isIdentical = false;
-                }
-                else if (it->second != pair.second)
-                {
+                } else if (it->second != pair.second) {
                     result.differences.push_back("文件内容不同: " + pair.first);
                     result.isIdentical = false;
                 }
             }
 
-            for (const auto &pair : fileMap2)
-            {
-                if (fileMap1.find(pair.first) == fileMap1.end())
-                {
+            for (const auto& pair : fileMap2) {
+                if (fileMap1.find(pair.first) == fileMap1.end()) {
                     result.differences.push_back("文件只存在于目录2: " + pair.first);
                     result.isIdentical = false;
                 }
             }
 
             return result;
-        }
-        catch (const std::exception &e)
-        {
-            throw std::runtime_error("比较目录失败: " + std::string(e.what()));
+        } catch (const std::exception& e) {
+            throw std::runtime_error("比较失败: " + std::string(e.what()));
         }
     }
 };

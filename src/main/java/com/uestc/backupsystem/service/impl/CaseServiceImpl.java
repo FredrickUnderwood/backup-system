@@ -46,6 +46,8 @@ public class CaseServiceImpl implements CaseService {
     public String createNewCase(CreateNewCaseParamDTO createNewCaseParam) {
         String sourcePath = createNewCaseParam.getSourcePath();
         String backupPath = createNewCaseParam.getBackupPath();
+        sourcePath = sourcePath.replace("\\", "/");
+        backupPath = backupPath.replace("\\", "/");
         CreateNewCaseResultDTO createNewCaseResult = new CreateNewCaseResultDTO();
         try {
             List<CaseRecordDAO> caseRecords = caseRecordMapper.getAllCaseRecordsBySourcePathAndBackupPath(sourcePath, backupPath);

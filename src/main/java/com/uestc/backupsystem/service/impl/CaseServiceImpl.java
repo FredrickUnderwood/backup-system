@@ -56,6 +56,16 @@ public class CaseServiceImpl implements CaseService {
                 createNewCaseResult.setCaseExisted(true);
                 return JSON.toJSONString(createNewCaseResult);
             }
+            if (!new File(sourcePath).exists() || !new File(backupPath).exists()) {
+                if (new File(sourcePath).exists()) {
+                    createNewCaseResult.setSourcePathExisted(true);
+                } else {
+                    createNewCaseResult.setBackupPathExisted(true);
+                }
+                return JSON.toJSONString(createNewCaseResult);
+            }
+            createNewCaseResult.setSourcePathExisted(true);
+            createNewCaseResult.setBackupPathExisted(true);
             LocalDateTime localDateTimeNow = LocalDateTime.now();
             CaseRecordDAO caseRecord = new CaseRecordDAO();
             caseRecord.setSourcePath(sourcePath);

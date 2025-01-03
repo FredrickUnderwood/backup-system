@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@RequestMapping("/api")
 public class CaseController {
 
     @Autowired
@@ -42,7 +43,7 @@ public class CaseController {
         }
     }
 
-    @GetMapping("/")
+    @GetMapping("/cases")
     public ResponseEntity<String> getAllCaseRecords() {
         String resultMap = caseService.getAllCaseRecords();
         if(resultMap != null) {
@@ -52,7 +53,7 @@ public class CaseController {
         }
     }
 
-    @GetMapping("/{case_id}")
+    @GetMapping("/cases/{case_id}")
     public ResponseEntity<String> getAllExecutionRecordsByCaseId(@PathVariable("case_id") long caseId) {
         String resultMap = caseService.getAllExecutionRecordsByCaseId(caseId);
         if(resultMap != null) {
@@ -71,5 +72,4 @@ public class CaseController {
             return ResponseEntity.badRequest().body("Delete case failed.");
         }
     }
-
 }
